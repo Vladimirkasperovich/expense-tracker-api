@@ -1,13 +1,13 @@
 model User {
-  id           String     @id @default(uuid())
-  name         String
-  email        String     @unique
-  passwordHash String
-  categories   Category[]
-  expenses     Expense[]
-  role         Role       @default(USER)
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
+  id         String     @id @default(uuid())
+  name       String
+  email      String     @unique
+  password   String
+  categories Category[]
+  expenses   Expense[]
+  role       Role       @default(USER)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   @@map("users")
 }
