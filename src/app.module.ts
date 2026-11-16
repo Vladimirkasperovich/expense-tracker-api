@@ -5,8 +5,9 @@ import { UserModule } from './user/user.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ExpenseModule } from './expense/expense.module.js';
 import { CategoryModule } from './category/category.module.js';
+import { TokenModule } from './token/token.module.js';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UserModule, AuthModule, ExpenseModule, CategoryModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UserModule, AuthModule, ExpenseModule, CategoryModule, TokenModule],
 })
 export class AppModule {}
