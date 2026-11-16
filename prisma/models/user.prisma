@@ -3,6 +3,7 @@ model User {
   name       String
   email      String     @unique
   password   String
+  sessions   Session[]
   categories Category[]
   expenses   Expense[]
   role       Role       @default(USER)

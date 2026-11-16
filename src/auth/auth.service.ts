@@ -3,7 +3,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { UserService } from "../user/user.service.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { hash, verify } from "argon2";
-import { User } from "../generated/prisma/client.js";
+import { Prisma, User } from "../generated/prisma/client.js";
 import { LoginDto } from "./dto/login.dto.js";
 
 @Injectable()
@@ -14,22 +14,30 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<Omit<User, "password">> {
-    const user = await this.userService.findByEmail(dto.email);
+    const { email, name, password } = dto;
+    const user = await this.userService.findByEmail(email);
 
     if (user) {
       throw new ConflictException("User with this email has been registered");
     }
 
-    return this.prismaService.user.create({
-      data: {
-        name: dto.name,
-        email: dto.email,
-        password: await hash(dto.password),
-      },
-      omit: {
-        password: true,
-      },
-    });
+    try {
+      return await this.prismaService.user.create({
+        data: {
+          name,
+          email,
+          password: await hash(password),
+        },
+        omit: { password: true },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === "P2002") {
+          throw new ConflictException("User with this email already exists");
+        }
+      }
+      throw e;
+    }
   }
 
   async login(dto: LoginDto) {
