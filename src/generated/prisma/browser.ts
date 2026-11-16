@@ -28,6 +28,11 @@ export type Category = Prisma.CategoryModel
  */
 export type Expense = Prisma.ExpenseModel
 /**
+ * Model Session
+ * 
+ */
+export type Session = Prisma.SessionModel
+/**
  * Model User
  * 
  */

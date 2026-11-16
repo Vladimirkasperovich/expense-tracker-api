@@ -5,12 +5,14 @@ import { RegisterDto } from "./dto/register.dto.js";
 import { hash, verify } from "argon2";
 import { Prisma, User } from "../generated/prisma/client.js";
 import { LoginDto } from "./dto/login.dto.js";
+import { TokenService } from "../token/token.service.js";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly userService: UserService,
+    private readonly tokenService: TokenService,
   ) {}
 
   async register(dto: RegisterDto): Promise<Omit<User, "password">> {
@@ -52,5 +54,10 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new UnauthorizedException("Incorrect email or password");
     }
+
+    // const session = await this.prismaService.session.create({data: {}})
+
+    const accessToken = await this.tokenService.generateAccessToken(user.id, user.role);
+    // const refreshToken = await this.tokenService.generateRefreshToken(user.id, session.id);
   }
 }
