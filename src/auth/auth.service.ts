@@ -6,6 +6,8 @@ import { hash, verify } from "argon2";
 import { Prisma, User } from "../generated/prisma/client.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { TokenService } from "../token/token.service.js";
+import { randomUUID } from "crypto";
+import type { LoginServiceResult } from "./types/auth.types.js";
 
 @Injectable()
 export class AuthService {
@@ -15,16 +17,17 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<Omit<User, "password">> {
+  async register(dto: RegisterDto): Promise<LoginServiceResult> {
     const { email, name, password } = dto;
-    const user = await this.userService.findByEmail(email);
+    const userExist = await this.userService.findByEmail(email);
 
-    if (user) {
+    if (userExist) {
       throw new ConflictException("User with this email has been registered");
     }
 
+    let user: Omit<User, "password">;
     try {
-      return await this.prismaService.user.create({
+      user = await this.prismaService.user.create({
         data: {
           name,
           email,
@@ -40,9 +43,12 @@ export class AuthService {
       }
       throw e;
     }
+
+    const userData = { id: user.id, name: user.name, role: user.role, email: user.email };
+    return this.createSession(userData);
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto): Promise<LoginServiceResult> {
     const user = await this.userService.findByEmail(dto.email);
 
     if (!user) {
@@ -55,9 +61,33 @@ export class AuthService {
       throw new UnauthorizedException("Incorrect email or password");
     }
 
-    // const session = await this.prismaService.session.create({data: {}})
+    return this.createSession(user);
+  }
 
+  private async createSession(
+    user: Pick<User, "id" | "name" | "role" | "email">,
+  ): Promise<LoginServiceResult> {
+    const sessionId = randomUUID();
     const accessToken = await this.tokenService.generateAccessToken(user.id, user.role);
-    // const refreshToken = await this.tokenService.generateRefreshToken(user.id, session.id);
+    const refreshToken = await this.tokenService.generateRefreshToken(user.id, sessionId);
+
+    await this.prismaService.session.create({
+      data: {
+        id: sessionId,
+        userId: user.id,
+        refreshToken: await hash(refreshToken),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    };
   }
 }
