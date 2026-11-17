@@ -1,6 +1,15 @@
-import { Controller, HttpCode, Post, Res, HttpStatus, Body } from "@nestjs/common";
+import {
+  Controller,
+  HttpCode,
+  Post,
+  Res,
+  Req,
+  HttpStatus,
+  Body,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { AuthService } from "./auth.service.js";
-import type { Response } from "express";
+import type { Response, Request } from "express";
 import { LoginDto } from "./dto/login.dto.js";
 import type { LoginResponse } from "./types/auth.types.js";
 import { RegisterDto } from "./dto/register.dto.js";
@@ -31,6 +40,15 @@ export class AuthController {
     return { accessToken, user };
   }
 
+  @Post("refresh")
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const oldRefreshToken = request.cookies?.refresh_token;
+
+    if (!oldRefreshToken) {
+      throw new UnauthorizedException("Refresh token is missing");
+    }
+  }
   private setRefreshTokenCookie(response: Response, refreshToken: string): void {
     response.cookie("refresh_token", refreshToken, {
       httpOnly: true,

@@ -64,6 +64,27 @@ export class AuthService {
     return this.createSession(user);
   }
 
+  async refresh(refreshToken: string) {
+    const { sid, sub } = await this.tokenService.verifyRefreshToken(refreshToken);
+
+    const session = await this.prismaService.session.findUnique({
+      where: { id: sid, userId: sub },
+    });
+
+    if (!session) {
+      throw new UnauthorizedException("Session not found");
+    }
+
+    if (session.expiresAt <= new Date()) {
+      throw new UnauthorizedException("Session expired");
+    }
+
+    const validRefreshToken = await verify(session.refreshToken, refreshToken);
+
+    if (!validRefreshToken) {
+      throw new UnauthorizedException("Refresh token is not valid");
+    }
+  }
   private async createSession(
     user: Pick<User, "id" | "name" | "role" | "email">,
   ): Promise<LoginServiceResult> {
