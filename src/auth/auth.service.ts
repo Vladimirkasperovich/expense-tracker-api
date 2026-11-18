@@ -115,6 +115,30 @@ export class AuthService {
       },
     };
   }
+
+  async logout(refreshTokenOld: string): Promise<void> {
+    const { sub, sid } = await this.tokenService.verifyRefreshToken(refreshTokenOld);
+    const session = await this.prismaService.session.findUnique({
+      where: { id: sid, userId: sub },
+    });
+
+    if (!session) {
+      throw new UnauthorizedException("Session not found");
+    }
+    const validRefreshToken = await verify(session.refreshToken, refreshTokenOld);
+
+    if (!validRefreshToken) {
+      throw new UnauthorizedException("Refresh token is not valid");
+    }
+
+    const result = await this.prismaService.session.deleteMany({
+      where: { id: sid, userId: sub, refreshToken: session.refreshToken },
+    });
+
+    if (result.count !== 1) {
+      throw new UnauthorizedException("Session already changed or deleted");
+    }
+  }
   private async createSession(
     user: Pick<User, "id" | "name" | "role" | "email">,
   ): Promise<LoginServiceResult> {

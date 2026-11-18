@@ -56,6 +56,29 @@ export class AuthController {
     this.setRefreshTokenCookie(response, refreshToken);
     return { accessToken, user };
   }
+
+  @Post("logout")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const refreshTokenOld = request.cookies?.refresh_token;
+
+    if (typeof refreshTokenOld !== "string" || !refreshTokenOld) {
+      throw new UnauthorizedException("Refresh token is missing");
+    }
+
+    await this.authService.logout(refreshTokenOld);
+
+    response.clearCookie("refresh_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/auth",
+    });
+  }
+
   private setRefreshTokenCookie(response: Response, refreshToken: string): void {
     response.cookie("refresh_token", refreshToken, {
       httpOnly: true,
