@@ -42,12 +42,19 @@ export class AuthController {
 
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
-  async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    const oldRefreshToken = request.cookies?.refresh_token;
+  async refresh(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<LoginResponse> {
+    const refreshTokenOld = request.cookies?.refresh_token;
 
-    if (!oldRefreshToken) {
+    if (typeof refreshTokenOld !== "string" || !refreshTokenOld) {
       throw new UnauthorizedException("Refresh token is missing");
     }
+
+    const { accessToken, refreshToken, user } = await this.authService.refresh(refreshTokenOld);
+    this.setRefreshTokenCookie(response, refreshToken);
+    return { accessToken, user };
   }
   private setRefreshTokenCookie(response: Response, refreshToken: string): void {
     response.cookie("refresh_token", refreshToken, {

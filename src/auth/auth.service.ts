@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { UserService } from "../user/user.service.js";
 import { RegisterDto } from "./dto/register.dto.js";
@@ -64,8 +69,8 @@ export class AuthService {
     return this.createSession(user);
   }
 
-  async refresh(refreshToken: string) {
-    const { sid, sub } = await this.tokenService.verifyRefreshToken(refreshToken);
+  async refresh(refreshTokenOld: string): Promise<LoginServiceResult> {
+    const { sid, sub } = await this.tokenService.verifyRefreshToken(refreshTokenOld);
 
     const session = await this.prismaService.session.findUnique({
       where: { id: sid, userId: sub },
@@ -79,11 +84,41 @@ export class AuthService {
       throw new UnauthorizedException("Session expired");
     }
 
-    const validRefreshToken = await verify(session.refreshToken, refreshToken);
+    const validRefreshToken = await verify(session.refreshToken, refreshTokenOld);
 
     if (!validRefreshToken) {
       throw new UnauthorizedException("Refresh token is not valid");
     }
+
+    const user = await this.prismaService.user.findUnique({ where: { id: session.userId } });
+
+    if (!user) {
+      throw new UnauthorizedException("Invalid session");
+    }
+    const accessToken = await this.tokenService.generateAccessToken(user.id, user.role);
+    const refreshToken = await this.tokenService.generateRefreshToken(user.id, session.id);
+
+    const result = await this.prismaService.session.updateMany({
+      where: { id: session.id, userId: user.id, refreshToken: session.refreshToken },
+      data: {
+        refreshToken: await hash(refreshToken),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (result.count !== 1) {
+      throw new UnauthorizedException("Session has already been refreshed");
+    }
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    };
   }
   private async createSession(
     user: Pick<User, "id" | "name" | "role" | "email">,
