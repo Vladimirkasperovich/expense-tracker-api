@@ -2,7 +2,6 @@ import { Module } from "@nestjs/common";
 import { TokenService } from "./token.service.js";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { PrismaModule } from "../prisma/prisma.module.js";
 
 @Module({
   imports: [
@@ -16,7 +15,6 @@ import { PrismaModule } from "../prisma/prisma.module.js";
         },
       }),
     }),
-    PrismaModule,
   ],
   providers: [TokenService],
   exports: [TokenService],
